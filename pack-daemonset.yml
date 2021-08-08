@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: packetbeat-dynamic
+  namespace: packetbeat
+  labels:
+    app: packetbeat-dynamic
+    kubernetes.io/cluster-service: "true"
+spec:
+  selector:
+    matchLabels:
+      app: packetbeat-dynamic
+  template:
+    metadata:
+      labels:
+        app: packetbeat-dynamic
+        kubernetes.io/cluster-service: "true"
+    spec:
+      serviceAccountName: packetbeat-dynamic
+      terminationGracePeriodSeconds: 30
+      hostNetwork: true
+      containers:
+      - name: packetbeat-dynamic
+        image: docker.elastic.co/beats/packetbeat:7.9.1
+        imagePullPolicy: Always
+        args: [
+          "-c", "/etc/packetbeat.yml",
+          "-e",
+        ]
+        securityContext:
+          runAsUser: 0
+          capabilities:
+            add:
+            - NET_ADMIN
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: config
+          mountPath: /etc/packetbeat.yml
+          readOnly: true
+          subPath: packetbeat.yml
+        - name: data
+          mountPath: /usr/share/packetbeat/data
+        - name: logs
+          mountPath: /var/log/packetbeat/packetbeat
+      volumes:
+      - name: logs
+        hostPath: 
+          path: /var/log/packetbeat/packetbeat
+      - name: config
+        configMap:
+          defaultMode: 0600
+          name: packetbeat-config
+      - name: data
+        emptyDir: {}

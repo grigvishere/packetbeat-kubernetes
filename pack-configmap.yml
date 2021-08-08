@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: packetbeat-dynamic-config
+  namespace: packetbeat
+  labels:
+    app: packetbeat-dynamic
+    kubernetes.io/cluster-service: "true"
+data:
+  packetbeat.yml: |-
+    #setup.dashboards.enabled: true
+    #setup.template.enabled: true
+    setup.ilm.enabled: false
+    setup.template.name: "packetbeat"
+    setup.template.pattern: "packetbeat-*"
+    setup.template.settings:
+      index.number_of_shards: 2
+    packetbeat.interfaces.device: any
+    packetbeat.protocols:
+    - type: dns
+      ports: [53]
+      include_authorities: true
+      include_additionals: true
+    - type: http
+      ports: [80, 8000, 8080, 9200]
+    - type: dhcpv4
+      ports: [67, 68]
+    - type: redis
+      ports: [6379]
+    - type: tls
+      ports: [443, 993, 995, 5223, 8443, 8883, 9243]
+    - type: mongodb
+      send_request: true
+      send_response: true
+      max_docs: 0
+      max_doc_length: 0  
+    packetbeat.flows:
+      timeout: 30s
+      period: 10s
+    processors:
+      - add_kubernetes_metadata:
+          host: ${HOSTNAME}
+          indexers:
+          - ip_port:
+          matchers:
+          - field_format:
+              format: '%{[ip]}:%{[port]}'
+          - fields:
+              lookup_fields: ["metricset.host"]      
+      - include_fields:
+          fields: ["host.name", "source", "destination", "network.bytes", "network.packets", "network.type", "network.transport", "client", "fields"]
+
+    
+    output.elasticsearch:
+      hosts: ["localhost:9200"]
+      index: "packet-k8s-%{[kubernetes.deployment.name]}-%{+yyyy.MM.dd}"

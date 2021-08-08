@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: packetbeat
+  name: packetbeat-config
+  labels:
+    app: packetbeat
+data:
+  packetbeat.yml: |-
+    # ================================== General ==================================
+    #  fields:
+    #  env: production
+    #  log_type: packetbeat
+    #  node_group: worker
+
+    # =============================== Network device ===============================
+    packetbeat.interfaces.device: any
+    packetbeat.interfaces.bpf_filter: "port 80  or port 8080  or port 9200  or port 67 or port 68  or port 63"
+
+    # =================================== Flows ====================================
+    packetbeat.flows:
+      timeout: 60s
+      period: 30s
+
+    # ============================ Monitored processes =============================
+
+    # If you want to ignore transactions created by the server on which the shipper
+    # is installed you can enable this option. This option is useful to remove
+    # duplicates if shippers are installed on multiple servers. Default value is
+    # false.
+    packetbeat.ignore_outgoing: false
+
+    # =============================== Logstash Output =============================
+    # output.logstash:
+    #  enabled: true
+    #  hosts:
+    #    - va-mon11:5544
+    #    - va-mon12:5544
+    #    - va-mon13:5544
+    #    - va-mon14:5544
+    #    - va-mon15:5544
+    #    - va-mon16:5544
+    #    - va-mon17:5544
+    #    - va-mon18:5544
+    #    - va-mon19:5544
+    #    - va-mon20:5544
+    #  compression_level: 3
+    #  loadbalance: true
+
+    # ================================= Processors =================================
+    processors:
+      - include_fields:
+          fields: ["host.name", "source", "destination", "network.bytes", "network.packets", "network.type", "network.transport", "client", "fields"]
+
+    # ====================== Index Lifecycle Management (ILM) ======================
+    setup.ilm.enabled: false
+    setup.template.name: "packetbeat"
+    setup.template.pattern: "packetbeat-*"
+
+    output.elasticsearch:
+      hosts: ["localhost:9200"]
+      index: "packet-k8s-"
+
